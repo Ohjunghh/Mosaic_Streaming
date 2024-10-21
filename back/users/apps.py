@@ -1,5 +1,5 @@
 from django.apps import AppConfig
-
+import torch
 
 class UsersConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'

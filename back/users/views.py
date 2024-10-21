@@ -11,7 +11,8 @@ from rest_framework.permissions import AllowAny
 from .serializers import UserRegistrationSerializer
 from .models import CustomUser  # 수정한 사용자 모델
 from .models import UserImage
-from .aboutvideo import load_face_encoder, load_encoding_dict, detect_and_mosaic#, load_yolo_model
+#from .aboutvideo import load_face_encoder, load_encoding_dict, detect_and_mosaic#, load_yolo_model
+from .aboutvideo import VideoProcessor
 from yolo_loader import yolo_model  # 전역 YOLO 모델 사용
 from django.conf import settings
 from django.http import FileResponse
@@ -113,16 +114,6 @@ def register_face(request):
 
 import subprocess
 
-def convert_video_with_ffmpeg(input_path, output_path):
-    # FFmpeg 명령어 실행
-    command = ['ffmpeg', '-i', input_path, '-vcodec', 'libx264', '-acodec', 'aac', '-strict', '-2', output_path]
-    try:
-        subprocess.run(command, check=True)
-        print(f"Conversion successful: {output_path}")
-    except subprocess.CalledProcessError as e:
-        print(f"Error during FFmpeg conversion: {str(e)}")
-        raise RuntimeError("FFmpeg conversion failed")
-
 # 중복된 파일 이름이 있을 때 숫자를 붙이는 함수
 def get_unique_video_name(directory, name):
     base_name = name
@@ -136,7 +127,7 @@ def get_unique_video_name(directory, name):
     return video_name
 
 
-from VToonify.style_transfer import detect_and_stylize
+#from VToonify.style_transfer import detect_and_stylize
 
 
 @csrf_exempt
@@ -177,10 +168,14 @@ def video_upload(request):
         for chunk in video_file.chunks():
             destination.write(chunk)
 
+    processor=VideoProcessor(user.id)
+
     # YOLO 및 FaceNet 모델 로드
     model = yolo_model
-    face_encoder = load_face_encoder()
-    encoding_dict = load_encoding_dict(user.id)
+    # face_encoder = load_face_encoder()
+    # encoding_dict = load_encoding_dict(user.id)
+    face_encoder=processor.face_encoder
+    encoding_dict=processor.encoding_dict
 
     if not encoding_dict:
         return JsonResponse({'error': 'Encoding file not found'}, status=400)
@@ -205,6 +200,7 @@ def video_upload(request):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print("device : ",device)
     style_degree = 0.5  # 또는 다른 값으로 설정
+  
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -217,10 +213,11 @@ def video_upload(request):
         #     frame = detect_and_mosaic(frame, model, face_encoder, encoding_dict, invoice, id_card, knife, face)
 
         if avatar:
+            from VToonify.style_transfer import detect_and_stylize
             frame = detect_and_stylize(frame, model, face_encoder, encoding_dict, device, style_degree, license_plate, invoice, id_card, license_card, knife, face)
         else:
-            frame = detect_and_mosaic(frame, model, face_encoder, encoding_dict, license_plate, invoice, id_card, license_card, knife, face)
-    
+            frame = processor.detect_and_mosaic(frame, model, license_plate, invoice, id_card, license_card, knife, face)
+            
         out.write(frame)
 
     cap.release()
@@ -252,7 +249,17 @@ def video_upload(request):
 
 # FFmpeg로 비디오 변환
 def convert_video_with_ffmpeg(input_path, output_path):
-    command = ['ffmpeg', '-i', input_path, '-vcodec', 'libx264', '-acodec', 'aac', '-strict', '-2', output_path]
+    command = [
+        'ffmpeg', 
+        '-i', input_path, 
+        '-filter:v', 'setpts=0.6897*PTS',  # 비디오 배속 설정 (1.45배속)
+        '-filter:a', 'atempo=1.45',          # 오디오 배속 설정
+        '-vcodec', 'libx264', 
+        '-acodec', 'aac', 
+        '-strict', '-2', 
+        '-stats', 
+        output_path
+    ]
     try:
         subprocess.run(command, check=True)
         print(f"Conversion successful: {output_path}")

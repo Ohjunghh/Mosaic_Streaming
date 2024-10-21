@@ -23,7 +23,8 @@ from users.models import CustomUser
 from yolo_loader import yolo_model
 import logging
 from webcam.sort import Sort 
-
+import torch.utils.cpp_extension
+torch.utils.cpp_extension.CppExtension.load = lambda *args, **kwargs: None
 # Constants and configurations
 confidence_t = 0.5
 recognition_t = 0.35
@@ -86,7 +87,7 @@ class WebcamStream:
             self.load_face_encoder()
             self.load_encoding_dict(email)
             #self.cap = cv2.VideoCapture(f"rtmp://192.168.58.194/live/{stream_key}")
-            self.cap = cv2.VideoCapture(f"rtmp://172.20.75.28/live/{stream_key}")
+            self.cap = cv2.VideoCapture(f"rtmp://172.20.79.30/live/{stream_key}")
             
             if not self.cap.isOpened():
                 logger.error("Unable to open RTMP stream.")
@@ -110,7 +111,7 @@ class WebcamStream:
                 '-pix_fmt', 'yuv420p',
                 '-preset', 'ultrafast',
                 '-f', 'flv',
-                f'rtmp://172.20.75.28/live-out/{self.stream_id}'  # 스트리밍 대상 RTMP URL
+                f'rtmp://172.20.79.30/live-out/{self.stream_id}'  # 스트리밍 대상 RTMP URL
             ]
 
 
@@ -173,68 +174,119 @@ class WebcamStream:
             logger.error(f"Failed to start FFmpeg process: {e}")
             self.stop()  # FFmpeg 시작 실패 시 스트림을 종료
 
+    #직전꺼
+    # def detect(self, img, license_plate, invoice, id_card, license_card, knife, face):
+    #     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    #     results = self.model(img_rgb)
+
+    #     track_results = []
+    #     for det in results.xyxy[0]:
+    #         x1, y1, x2, y2, conf, cls = det
+    #         cls = int(cls)
+    #         if conf < confidence_t:
+    #             continue
+
+    #         if cls == 5 and face:  # 얼굴 클래스일 경우
+    #             track_results.append([x1.item(), y1.item(), x2.item(), y2.item()])  # 좌표만 추가
+
+    #     # SORT 알고리즘 적용 (얼굴 추적)
+    #     tracked_objects = self.tracker.update(np.array(track_results)) if len(track_results) > 0 else self.tracker.update(np.empty((0, 4)))
+
+    #     closest_broadcaster = {'name': 'unknown', 'distance': float("inf"), 'box': None}
+
+    #     # 얼굴 인식 플래그 초기화
+    #     face_recognized = False
+
+    #     for obj in tracked_objects:
+    #         x1, y1, x2, y2, track_id = obj[:5]
+    #         object_img = img[int(y1):int(y2), int(x1):int(x2)]
+
+    #         # 얼굴 인식을 30프레임마다 수행
+    #         if self.face_frame_count % 30 == 0:
+    #             encode_face = self.get_encode(object_img, required_size)
+    #             if encode_face is None:
+    #                 continue  # 얼굴 인식 실패 시 건너뜀
+
+    #             encode_face = l2_normalizer.transform(encode_face.reshape(1, -1))[0]
+    #             name = 'unknown'
+    #             distance = float("inf")
+
+    #             for db_name, db_encode in self.encoding_dict.items():
+    #                 dist = cosine(db_encode, encode_face)
+    #                 if dist < recognition_t and dist < distance:
+    #                     name = db_name
+    #                     distance = dist
+
+    #             # 인식된 얼굴 정보 저장
+    #             self.recognized_faces[track_id] = {'name': name, 'distance': distance}
+    #             face_recognized = True  # 얼굴이 인식되었음을 표시
+
+    #             # 가장 가까운 방송인 정보 업데이트
+    #             if distance < closest_broadcaster['distance']:
+    #                 closest_broadcaster = {'name': name, 'distance': distance, 'box': (int(x1), int(y1), int(x2), int(y2))}
+
+    #     # 방송인 이름이 'unknown'이 아닐 경우, 다른 얼굴을 모자이크 처리
+    #     if closest_broadcaster['name'] != 'unknown':
+    #         for track_id, face_info in self.recognized_faces.items():
+    #             if face_info['name'] != closest_broadcaster['name']:
+    #                 # 모자이크 처리
+    #                 if 'box' in face_info:  # 박스 정보가 있을 때만
+    #                     face_box = face_info['box']
+    #                     img = self.apply_mosaic(img, (face_box[0], face_box[1]), (face_box[2], face_box[3]))
+
+    #     # 얼굴에 대한 처리
+    #     for obj in tracked_objects:
+    #         x1, y1, x2, y2, track_id = obj[:5]
+    #         recognized_face = self.recognized_faces.get(track_id, {'name': 'unknown', 'distance': float("inf")})
+    #         name = recognized_face['name']
+    #         distance = recognized_face['distance']
+
+    #         if name == 'unknown':
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #             cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+    #             cv2.putText(img, name, (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+    #         else:
+    #             cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+    #             cv2.putText(img, f'{name} {distance:.2f}', (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    #     # 프레임 카운트 증가 (얼굴이 인식된 경우에만)
+    #     if face_recognized:
+    #         self.face_frame_count += 1
+
+    #     # 클래스별로 모자이크 처리 적용
+    #     for det in results.xyxy[0]:
+    #         x1, y1, x2, y2, conf, cls = det
+    #         cls = int(cls)
+    #         if conf < confidence_t:
+    #             continue
+
+    #         if cls == 0 and license_plate:  # 차량 번호판
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         if cls == 1 and invoice:  # 송장
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         if cls == 2 and id_card:  # ID 카드
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         if cls == 3 and license_card:  # 라이센스 카드
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         if cls == 4 and knife:  # 칼
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+
+    #     return img
+
     def detect(self, img, license_plate, invoice, id_card, license_card, knife, face):
+        global face_frame_count, broadcaster_id, broadcaster_frame_count, recognized_faces
+
+        # 유효하지 않은 이미지일 경우 None 반환
+        if img is None or img.shape[0] == 0 or img.shape[1] == 0:
+            return None
+
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         results = self.model(img_rgb)
-
         track_results = []
-        for det in results.xyxy[0]:
-            x1, y1, x2, y2, conf, cls = det
-            cls = int(cls)
-            if conf < confidence_t:
-                continue
+        face_detect = False
 
-            if cls == 5 and face:  # 얼굴 클래스일 경우
-                track_results.append([x1.item(), y1.item(), x2.item(), y2.item()])  # 좌표만 추가
+       
 
-        # SORT 알고리즘 적용 (얼굴 추적)
-        if len(track_results) > 0:
-            tracked_objects = self.tracker.update(np.array(track_results))
-        else:
-            tracked_objects = self.tracker.update(np.empty((0, 4)))  # 빈 배열 전달
-
-        for obj in tracked_objects:
-            x1, y1, x2, y2, track_id = obj[:5]
-            object_img = img[int(y1):int(y2), int(x1):int(x2)]
-
-            # 얼굴 인식을 30프레임마다 수행
-            if self.face_frame_count % 30 == 0:
-                encode_face = self.get_encode(object_img, required_size)
-                if encode_face is None:
-                    continue  # 얼굴 인식 실패 시 건너뜀
-
-                encode_face = l2_normalizer.transform(encode_face.reshape(1, -1))[0]
-                name = 'unknown'
-                distance = float("inf")
-
-                for db_name, db_encode in self.encoding_dict.items():
-                    dist = cosine(db_encode, encode_face)
-                    if dist < recognition_t and dist < distance:
-                        name = db_name
-                        distance = dist
-
-      
-                # 인식된 얼굴 정보 저장 (track_id 기준, 이름과 거리 모두 저장)
-                self.recognized_faces[track_id] = {'name': name, 'distance': distance}
-            else:
-                # 30프레임이 아닐 경우 이전 인식 결과를 사용
-                recognized_face = self.recognized_faces.get(track_id, {'name': 'unknown', 'distance': float("inf")})
-                name = recognized_face['name']
-                distance = recognized_face['distance']
-
-            # 결과에 따라 이미지 처리
-            if name == 'unknown':
-                img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
-                cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
-                cv2.putText(img, name, (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            else:
-                cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                cv2.putText(img, f'{name} {distance:.2f}', (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-        # 프레임 카운트 증가
-        self.face_frame_count += 1
-
-        # 클래스별로 모자이크 처리 적용
         for det in results.xyxy[0]:
             x1, y1, x2, y2, conf, cls = det
             cls = int(cls)
@@ -243,17 +295,212 @@ class WebcamStream:
 
             if cls == 0 and license_plate:  # 차량 번호판
                 img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+            
             if cls == 1 and invoice:  # 송장
                 img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+            
             if cls == 2 and id_card:  # ID 카드
                 img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+            
             if cls == 3 and license_card:  # 라이센스 카드
                 img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+            
             if cls == 4 and knife:  # 칼
                 img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+        
+            if cls == 5 and face:  # 얼굴 클래스일 경우
+                track_results.append([x1.item(), y1.item(), x2.item(), y2.item()])
+                face_detect = True
+
+        # SORT 알고리즘 적용 (얼굴 추적)
+        if len(track_results) > 0:
+            tracked_objects = self.tracker.update(np.array(track_results))
+        else:
+            tracked_objects = self.tracker.update(np.empty((0, 4)))
+
+
+        # 방송인으로 설정할 얼굴을 위한 변수 초기화
+        min_distance = float('inf')
+        best_broadcaster_id = None
+
+        for obj in tracked_objects:
+            x1, y1, x2, y2, track_id = obj[:5]
+            object_img = img[int(y1):int(y2), int(x1):int(x2)]
+
+            if object_img.size == 0:
+                logging.debug(f"Invalid face region: x1={x1}, y1={y1}, x2={x2}, y2={y2}. Skipping face.")
+                continue
+
+            # 30프레임마다 얼굴 인식 수행
+            if self.face_frame_count % 30 == 0:
+                logging.debug(f"Performing face recognition on frame {self.face_frame_count}.")
+
+                encode_face = self.get_encode(object_img, required_size)
+                if encode_face is None:
+                    logging.debug("Face encoding failed, skipping.")
+                    continue
+
+                encode_face = l2_normalizer.transform(encode_face.reshape(1, -1))[0]
+                name = 'unknown'
+                distance = float('inf')
+
+                # 사전에 저장된 인코딩과 비교
+                for db_name, db_encode in self.encoding_dict.items():
+                    dist = cosine(db_encode, encode_face)
+                    if dist < recognition_t and dist < distance:
+                        name = db_name
+                        distance = dist
+
+                # 인식된 얼굴을 저장 (트랙 ID로 관리)
+                self.recognized_faces[track_id] = {'name': name, 'distance': distance}
+                logging.debug(f"Track ID {track_id}, Name: {name}, Distance: {distance}")
+
+                # Best broadcaster 업데이트 로직 추가
+                if name != 'unknown' and (best_broadcaster_id is None or distance < self.recognized_faces[best_broadcaster_id]['distance']):
+                    # 현재 프레임에서 방송인을 식별하면 갱신
+                    self.recognized_faces[track_id] = {'name': name, 'distance': distance}
+                    best_broadcaster_id = track_id
+                    logging.debug(f"Best broadcaster updated: Track ID {track_id}, Name: {name}, Distance: {distance}")
+                else:
+                    if best_broadcaster_id is not None and best_broadcaster_id in self.recognized_faces:
+                        best_broadcaster = self.recognized_faces[best_broadcaster_id]
+                        logging.debug(f"Best broadcaster maintained: Track ID {best_broadcaster_id}, Name: {best_broadcaster['name']}, Distance: {best_broadcaster['distance']}")
+                    else:
+                        logging.debug("No previous broadcaster available to maintain.")
+
+            else:
+                if track_id in self.recognized_faces:
+                    recognized_face = self.recognized_faces[track_id]
+                    name = recognized_face['name']
+                    distance = recognized_face['distance']
+                else:
+                    name = 'unknown'
+                    distance = float('inf')
+
+            # 가장 거리가 작은 트랙 ID를 방송인으로 설정
+            if name != 'unknown' and distance < min_distance:
+                min_distance = distance
+                best_broadcaster_id = track_id
+
+        # 방송인으로 설정된 트랙 ID가 있을 경우 표시
+        if best_broadcaster_id is not None:
+            broadcaster_info = self.recognized_faces[best_broadcaster_id]
+            broadcaster_name = broadcaster_info['name']
+            broadcaster_distance = broadcaster_info['distance']
+            logging.debug(f"Best broadcaster: Track ID {best_broadcaster_id}, Name: {broadcaster_name}, Distance: {broadcaster_distance}")
+
+            # 방송인 얼굴만 초록색 박스로 표시
+            for obj in tracked_objects:
+                x1, y1, x2, y2, track_id = obj[:5]
+                if track_id == best_broadcaster_id:
+                    cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    cv2.putText(img, f'{broadcaster_name} {broadcaster_distance:.2f}', (int(x1), int(y1) - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                else:
+                    img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+                    cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+                    cv2.putText(img, 'unknown', (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+
+        if face_detect:
+            self.face_frame_count += 1
 
         return img
 
+
+    # def detect(self, img, license_plate, invoice, id_card, license_card, knife, face):
+    #     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    #     results = self.model(img_rgb)
+
+    #     track_results = []
+    #     for det in results.xyxy[0]:
+    #         x1, y1, x2, y2, conf, cls = det
+    #         cls = int(cls)
+    #         if conf < confidence_t:
+    #             continue
+
+    #         if cls == 5 and face:  # 얼굴 클래스일 경우
+    #             track_results.append([x1.item(), y1.item(), x2.item(), y2.item()])  # 좌표만 추가
+
+    #     # SORT 알고리즘 적용 (얼굴 추적)
+    #     tracked_objects = self.tracker.update(np.array(track_results)) if len(track_results) > 0 else self.tracker.update(np.empty((0, 4)))
+
+    #     closest_broadcaster = {'name': 'unknown', 'distance': float("inf"), 'box': None}
+
+    #     for obj in tracked_objects:
+    #         x1, y1, x2, y2, track_id = obj[:5]
+    #         object_img = img[int(y1):int(y2), int(x1):int(x2)]
+
+    #         # 얼굴 인식을 30프레임마다 수행
+    #         if self.face_frame_count % 30 == 0:
+    #             encode_face = self.get_encode(object_img, required_size)
+    #             if encode_face is None:
+    #                 continue  # 얼굴 인식 실패 시 건너뜀
+
+    #             encode_face = l2_normalizer.transform(encode_face.reshape(1, -1))[0]
+    #             name = 'unknown'
+    #             distance = float("inf")
+
+    #             for db_name, db_encode in self.encoding_dict.items():
+    #                 dist = cosine(db_encode, encode_face)
+    #                 if dist < recognition_t and dist < distance:
+    #                     name = db_name
+    #                     distance = dist
+
+    #             # 인식된 얼굴 정보 저장
+    #             self.recognized_faces[track_id] = {'name': name, 'distance': distance}
+
+    #             # 가장 가까운 방송인 정보 업데이트
+    #             if distance < closest_broadcaster['distance']:
+    #                 closest_broadcaster = {'name': name, 'distance': distance, 'box': (int(x1), int(y1), int(x2), int(y2))}
+
+    #     # 방송인 이름이 'unknown'이 아닐 경우, 다른 얼굴을 모자이크 처리
+    #     if closest_broadcaster['name'] != 'unknown':
+    #         for track_id, face_info in self.recognized_faces.items():
+    #             if face_info['name'] != closest_broadcaster['name']:
+    #                 # 모자이크 처리
+    #                 if 'box' in face_info:  # 박스 정보가 있을 때만
+    #                     face_box = face_info['box']
+    #                     img = self.apply_mosaic(img, (face_box[0], face_box[1]), (face_box[2], face_box[3]))
+
+    #     # 얼굴에 대한 처리
+    #     for obj in tracked_objects:
+    #         x1, y1, x2, y2, track_id = obj[:5]
+    #         recognized_face = self.recognized_faces.get(track_id, {'name': 'unknown', 'distance': float("inf")})
+    #         name = recognized_face['name']
+    #         distance = recognized_face['distance']
+
+    #         if name == 'unknown':
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #             cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+    #             cv2.putText(img, name, (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+    #         else:
+    #             cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+    #             cv2.putText(img, f'{name} {distance:.2f}', (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    #     # 프레임 카운트 증가
+    #     self.face_frame_count += 1
+
+    #     # 클래스별로 모자이크 처리 적용
+    #     for det in results.xyxy[0]:
+    #         x1, y1, x2, y2, conf, cls = det
+    #         cls = int(cls)
+    #         if conf < confidence_t:
+    #             continue
+
+    #         if cls == 0 and license_plate:  # 차량 번호판
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         if cls == 1 and invoice:  # 송장
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         if cls == 2 and id_card:  # ID 카드
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         if cls == 3 and license_card:  # 라이센스 카드
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         if cls == 4 and knife:  # 칼
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+
+    #     return img
+
+    
 
     def apply_mosaic(self, image, pt_1, pt_2, kernel_size=15):
         x1, y1 = pt_1
@@ -423,6 +670,17 @@ def stop_flutter_stream(request):
         logger.error(f"Error stopping stream: {e}")
         return JsonResponse({"error": str(e)}, status=500)
 
+@csrf_exempt
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_id(request):
+    active_streams = [i for i, available in enumerate(possible_list) if not available]
+    
+    # 활성 스트림이 없는 경우
+    if not active_streams:
+        return JsonResponse({"active_streams": [], "message": "No active streams"}, status=200)
+    
+    return JsonResponse({"active_streams": active_streams}, status=200)
 
 import atexit
 
