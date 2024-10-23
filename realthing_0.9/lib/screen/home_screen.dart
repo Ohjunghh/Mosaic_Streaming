@@ -183,6 +183,7 @@ import 'register_face_screen.dart';
 import 'live_stream_home_screen.dart';
 import 'my_video_screen.dart';
 import 'vlc_player_screen.dart';
+import '../constants/ip.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -214,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final response = await http.get(
-      Uri.parse('http://172.20.75.28:8000/api/users/profile'),
+      Uri.parse('${ApiConstants.baseUrl}/api/users/profile'),
       headers: {
         'Authorization': 'Bearer $token',
       },

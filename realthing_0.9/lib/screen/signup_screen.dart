@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../constants/ip.dart';
 
 class SignUpScreen extends StatelessWidget {
   final TextEditingController _emailController = TextEditingController();
@@ -23,7 +24,7 @@ class SignUpScreen extends StatelessWidget {
     try {
       print('Sending signup request...');
       final response = await http.post(
-        Uri.parse('http://172.20.75.28:8000/api/users/signup/'), // 에뮬레이터에서는 10.0.2.2를 사용
+        Uri.parse('${ApiConstants.baseUrl}/api/users/signup/'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },

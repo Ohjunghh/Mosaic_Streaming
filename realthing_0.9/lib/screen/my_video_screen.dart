@@ -384,6 +384,7 @@ import 'package:path_provider/path_provider.dart'; // path_provider 사용 추�
 import 'upload_video_screen.dart'; // 업로드 화면 import
 import '../model/video_model.dart'; // Video 모델 import
 import 'video_player_screen.dart';
+import '../constants/ip.dart';
 
 class MyVideosScreen extends StatefulWidget {
   @override
@@ -407,7 +408,7 @@ class _MyVideosScreenState extends State<MyVideosScreen> {
     String userEmail = 'aaa@naver.com';
     try {
       final response = await http.get(
-          Uri.parse('http://172.20.75.28:8000/api/users/video_download/?email=$userEmail'));
+          Uri.parse('${ApiConstants.baseUrl}/api/users/video_download/?email=$userEmail'));
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
 

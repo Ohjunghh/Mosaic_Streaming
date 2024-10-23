@@ -347,6 +347,7 @@ import 'package:wakelock/wakelock.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/constants.dart';
+import '../constants/ip.dart';
 
 MaterialColor apiVideoOrange = const MaterialColor(0xFFFA5B30, const {
   50: const Color(0xFFFBDDD4),
@@ -578,7 +579,7 @@ class _LiveViewPageState extends State<LiveViewPage> with WidgetsBindingObserver
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.20.75.28:8000/api/webcam/start_flutter_stream/'),
+        Uri.parse('${ApiConstants.baseUrl}/api/webcam/start_flutter_stream/'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -632,7 +633,7 @@ class _LiveViewPageState extends State<LiveViewPage> with WidgetsBindingObserver
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.20.75.28:8000/api/webcam/stop_flutter_stream/'),  // 방송 종료 URL
+        Uri.parse('${ApiConstants.baseUrl}/api/webcam/stop_flutter_stream/'),  // 방송 종료 URL
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },

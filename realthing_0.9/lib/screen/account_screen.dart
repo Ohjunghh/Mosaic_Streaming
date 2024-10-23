@@ -215,6 +215,7 @@ import 'package:image_picker/image_picker.dart'; // 이미지 선택을 위한 i
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; // SharedPreferences import
 import 'package:http_parser/http_parser.dart'; // MediaType import
+import '../constants/ip.dart';
 
 class AccountScreen extends StatefulWidget {
   @override
@@ -251,7 +252,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse('http://172.20.75.28:8000/api/users/profile/'),
+      Uri.parse('${ApiConstants.baseUrl}/api/users/profile/'),
     );
     request.headers['Authorization'] = 'Bearer $token';
     request.files.add(await http.MultipartFile.fromPath(

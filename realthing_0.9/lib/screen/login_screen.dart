@@ -60,6 +60,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
+import '../constants/ip.dart';
 
 class LoginScreen extends StatelessWidget {
   final TextEditingController _emailController = TextEditingController();
@@ -72,7 +73,7 @@ class LoginScreen extends StatelessWidget {
     try {
       print('Sending login request...');
       final response = await http.post(
-        Uri.parse('http://172.20.75.28:8000/api/users/signin/'), // 로컬 Django 서버 URL
+        Uri.parse('${ApiConstants.baseUrl}/api/users/signin/'), // 로컬 Django 서버 URL
         //Uri.parse('http://192.168.174.14:8000/api/users/signin/'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',

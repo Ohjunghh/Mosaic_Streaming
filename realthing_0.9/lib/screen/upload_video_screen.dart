@@ -293,6 +293,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart'; // path_provider 사용 추가
 import 'package:flutter/services.dart';
 import '../model/video_model.dart';
+import '../constants/ip.dart';
 
 class UploadVideoScreen extends StatefulWidget {
   final Function(Video) onVideoUploaded;
@@ -362,7 +363,7 @@ class _UploadVideoScreenState extends State<UploadVideoScreen> {
     for (var videoFile in _videoFiles) {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://172.20.75.28:8000/api/users/video_upload/'),
+        Uri.parse('${ApiConstants.baseUrl}/api/users/video_upload/'),
       );
 
       var mimeType = lookupMimeType(videoFile.path);
