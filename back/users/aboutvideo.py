@@ -199,14 +199,18 @@ class VideoProcessor:
         self.encoding_dict = self.load_encoding_dict(user_id)
         self.tracker = Sort()  # SORT 트래커 초기화
         self.frame_count = 0
+        
         self.broadcaster_vote_count = {}
         self.broadcaster_id = None
         self.broadcaster_box = None
-        self.vote_threshold = 6
+        self.vote_threshold = 5
         self.max_frames = 30
         self.confidence_t = 0.5  # YOLO 탐지 신뢰도 임계값
-        self.recognition_t = 0.36  # 얼굴 인식 거리 임계값
+        self.recognition_t = 0.2  # 얼굴 인식 거리 임계값
         self.required_size = (160, 160)
+        self.face_frame_count=0
+        self.broadcaster_frame_count = 0  # 방송인 유지 프레임 카운트 (추가)
+        self.recognized_faces = {}  # 인식된 얼굴들 저장 (추가)
 
     def load_face_encoder(self):
         face_encoder = InceptionResNetV2()
@@ -269,8 +273,13 @@ class VideoProcessor:
         return image
 
 
-
     def detect_and_mosaic(self, img, model, license_plate, invoice, id_card, license_card, knife, face):
+        global face_frame_count, broadcaster_id, broadcaster_frame_count, recognized_faces
+
+        # 유효하지 않은 이미지일 경우 None 반환
+        if img is None or img.shape[0] == 0 or img.shape[1] == 0:
+            return None
+
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         results = model(img_rgb)
         detect_face = False
@@ -278,6 +287,7 @@ class VideoProcessor:
         img_height, img_width = img.shape[:2]
         detections = []
 
+            # 탐지된 객체를 순회하며 각 클래스에 따라 처리
         for det in results.xyxy[0]:
             x1, y1, x2, y2, conf, cls = det
             cls = int(cls)
@@ -286,10 +296,11 @@ class VideoProcessor:
 
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
+            # 이미지 크기 범위 내에 있는지 확인
             if x1 < 0 or y1 < 0 or x2 > img_width or y2 > img_height or x1 >= x2 or y1 >= y2:
                 continue
 
-            # 번호판, 송장, 면허증 등 모자이크 처리
+            # 번호판, 송장, ID 카드 등 모자이크 처리
             if cls == 0 and license_plate:
                 img = self.apply_mosaic(img, (x1, y1), (x2, y2))
             if cls == 1 and invoice:
@@ -301,11 +312,12 @@ class VideoProcessor:
             if cls == 4 and knife:
                 img = self.apply_mosaic(img, (x1, y1), (x2, y2))
 
+                # 얼굴 클래스일 경우
             if cls == 5 and face:
                 detections.append([x1, y1, x2, y2])
                 detect_face = True
 
-        # 트래커 업데이트
+            # 얼굴 추적
         if detections:
             tracked_objects = self.tracker.update(np.array(detections))
             logging.debug(f"Tracked objects: {tracked_objects}")
@@ -313,50 +325,48 @@ class VideoProcessor:
             tracked_objects = self.tracker.update(np.empty((0, 4)))
             logging.debug(f"No faces detected")
 
-        # 방송인 얼굴 추적 및 선택
-        if self.frame_count % self.max_frames < 10:
+        # 방송인 얼굴 추적 및 선택 (투표 로직 추가)
+        if self.face_frame_count % 30 < 10:
             min_distance = float('inf')
             selected_track_id = None
 
+            # 트래커로 추적된 얼굴 중에서 방송인 얼굴 선택
             for track in tracked_objects:
                 if len(track) >= 5:
                     x1, y1, x2, y2, track_id = map(int, track[:5])
 
-                    if cls == 5 and face:
-                        logging.debug(f"Face detected at: {(x1, y1, x2, y2)}")
-                        face_img = img[y1:y2, x1:x2]
+                    face_img = img[y1:y2, x1:x2]
 
-                        if face_img.size == 0:
-                            logging.warning(f"Invalid face image size at: {(x1, y1, x2, y2)}")
-                            continue
+                    # 얼굴 이미지가 유효한지 확인
+                    if face_img.size == 0:
+                        logging.warning(f"Invalid face image size at: {(x1, y1, x2, y2)}")
+                        continue
 
-                        encode_face = self.get_encode(face_img, self.required_size)
-                        if encode_face is None:
-                            logging.warning(f"Failed to encode face at: {(x1, y1, x2, y2)}")
-                            continue
+                        # 얼굴 인코딩
+                    encode_face = self.get_encode(face_img, self.required_size)
+                    if encode_face is None:
+                        logging.warning(f"Failed to encode face at: {(x1, y1, x2, y2)}")
+                        continue
 
-                        encode_face = l2_normalizer.transform(encode_face.reshape(1, -1))[0]
+                    encode_face = l2_normalizer.transform(encode_face.reshape(1, -1))[0]
 
-                        # 얼굴 인식 거리 계산
-                        for db_name, db_encode in self.encoding_dict.items():
-                            dist = cosine(db_encode, encode_face)
-                            logging.debug(f"Distance between db_name {db_name} and current face: {dist}")
-                            if dist < self.recognition_t and dist < min_distance:
-                                min_distance = dist
-                                selected_track_id = track_id
+                        # 저장된 얼굴 인코딩과 비교하여 가장 가까운 얼굴 선택
+                    for db_name, db_encode in self.encoding_dict.items():
+                        dist = cosine(db_encode, encode_face)
+                        logging.debug(f"Distance between db_name {db_name} and current face: {dist}")
+                        if dist < self.recognition_t and dist < min_distance:
+                            min_distance = dist
+                            selected_track_id = track_id
 
-                        # 만약 'unknown'이라면 무조건 모자이크 처리
-                        recognized_face = self.recognized_faces.get(track_id, {'name': 'unknown', 'distance': float('inf')})
-                        if recognized_face['name'] == 'unknown':
-                            img = self.apply_mosaic(img, (x1, y1), (x2, y2))
+                # 투표 기반으로 방송인 얼굴 선택
             if selected_track_id is not None:
                 logging.debug(f"Selected track ID for broadcaster: {selected_track_id}")
                 if selected_track_id not in self.broadcaster_vote_count:
                     self.broadcaster_vote_count[selected_track_id] = 0
                 self.broadcaster_vote_count[selected_track_id] += 1
 
-        # 방송인 얼굴 업데이트 및 투표 결과 반영
-        if self.frame_count % self.max_frames == 0:
+            # 투표 결과를 통해 방송인 얼굴 확정
+        if self.face_frame_count % 30 == 0:
             max_votes = 0
             for track_id, votes in self.broadcaster_vote_count.items():
                 if votes > max_votes:
@@ -364,147 +374,26 @@ class VideoProcessor:
                     self.broadcaster_id = track_id
 
             if max_votes >= self.vote_threshold:
-                self.broadcaster_box = next((track[:4] for track in tracked_objects if len(track) >= 6 and int(track[-1]) == self.broadcaster_id), None)
+                # 방송인 얼굴의 위치를 업데이트
+                self.broadcaster_box = next((track[:4] for track in tracked_objects if len(track) >= 5 and int(track[-1]) == self.broadcaster_id), None)
                 logging.debug(f"Updated broadcaster_box: {self.broadcaster_box}")
             else:
                 self.broadcaster_box = None
 
+            # 투표 기록 초기화
             self.broadcaster_vote_count.clear()
 
-        # 모자이크 적용
+            # 방송인 얼굴 외 나머지 얼굴에 모자이크 적용
         for track in tracked_objects:
             if len(track) >= 5:
                 x1, y1, x2, y2, track_id = map(int, track[:5])
-            
 
-                # 방송인 얼굴 외에 모자이크 적용
+                    # 방송인 얼굴 외에 모자이크 적용
                 if track_id != self.broadcaster_id:
                     img = self.apply_mosaic(img, (x1, y1), (x2, y2))
-
+                else:
+                    logging.debug(f"Broadcaster ID {track_id} is not blurred. Coordinates: {(x1, y1, x2, y2)}")
         if detect_face:
-            self.frame_count += 1
+            self.face_frame_count += 1
 
         return img
-    # def detect(self, img, license_plate, invoice, id_card, license_card, knife, face):
-    #     global face_frame_count, broadcaster_id, broadcaster_frame_count, recognized_faces
-
-    #     # 유효하지 않은 이미지일 경우 None 반환
-    #     if img is None or img.shape[0] == 0 or img.shape[1] == 0:
-    #         return None
-
-    #     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    #     results = self.model(img_rgb)
-    #     detect_face = False
-
-    #     img_height, img_width = img.shape[:2]
-    #     detections = []
-
-    #     # 탐지된 객체를 순회하며 각 클래스에 따라 처리
-    #     for det in results.xyxy[0]:
-    #         x1, y1, x2, y2, conf, cls = det
-    #         cls = int(cls)
-    #         if conf < self.confidence_t:
-    #             continue
-
-    #         x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-
-    #         # 이미지 크기 범위 내에 있는지 확인
-    #         if x1 < 0 or y1 < 0 or x2 > img_width or y2 > img_height or x1 >= x2 or y1 >= y2:
-    #             continue
-
-    #         # 번호판, 송장, ID 카드 등 모자이크 처리
-    #         if cls == 0 and license_plate:
-    #             img = self.apply_mosaic(img, (x1, y1), (x2, y2))
-    #         if cls == 1 and invoice:
-    #             img = self.apply_mosaic(img, (x1, y1), (x2, y2))
-    #         if cls == 2 and id_card:
-    #             img = self.apply_mosaic(img, (x1, y1), (x2, y2))
-    #         if cls == 3 and license_card:
-    #             img = self.apply_mosaic(img, (x1, y1), (x2, y2))
-    #         if cls == 4 and knife:
-    #             img = self.apply_mosaic(img, (x1, y1), (x2, y2))
-
-    #         # 얼굴 클래스일 경우
-    #         if cls == 5 and face:
-    #             detections.append([x1, y1, x2, y2])
-    #             detect_face = True
-
-    #     # 얼굴 추적
-    #     if detections:
-    #         tracked_objects = self.tracker.update(np.array(detections))
-    #         logging.debug(f"Tracked objects: {tracked_objects}")
-    #     else:
-    #         tracked_objects = self.tracker.update(np.empty((0, 4)))
-    #         logging.debug(f"No faces detected")
-
-    #     # 방송인 얼굴 추적 및 선택 (투표 로직 추가)
-    #     if self.face_frame_count % 30 < 10:
-    #         min_distance = float('inf')
-    #         selected_track_id = None
-
-    #         # 트래커로 추적된 얼굴 중에서 방송인 얼굴 선택
-    #         for track in tracked_objects:
-    #             if len(track) >= 5:
-    #                 x1, y1, x2, y2, track_id = map(int, track[:5])
-
-    #                 face_img = img[y1:y2, x1:x2]
-
-    #                 # 얼굴 이미지가 유효한지 확인
-    #                 if face_img.size == 0:
-    #                     logging.warning(f"Invalid face image size at: {(x1, y1, x2, y2)}")
-    #                     continue
-
-    #                 # 얼굴 인코딩
-    #                 encode_face = self.get_encode(face_img, self.required_size)
-    #                 if encode_face is None:
-    #                     logging.warning(f"Failed to encode face at: {(x1, y1, x2, y2)}")
-    #                     continue
-
-    #                 encode_face = l2_normalizer.transform(encode_face.reshape(1, -1))[0]
-
-    #                 # 저장된 얼굴 인코딩과 비교하여 가장 가까운 얼굴 선택
-    #                 for db_name, db_encode in self.encoding_dict.items():
-    #                     dist = cosine(db_encode, encode_face)
-    #                     logging.debug(f"Distance between db_name {db_name} and current face: {dist}")
-    #                     if dist < self.recognition_t and dist < min_distance:
-    #                         min_distance = dist
-    #                         selected_track_id = track_id
-
-    #         # 투표 기반으로 방송인 얼굴 선택
-    #         if selected_track_id is not None:
-    #             logging.debug(f"Selected track ID for broadcaster: {selected_track_id}")
-    #             if selected_track_id not in self.broadcaster_vote_count:
-    #                 self.broadcaster_vote_count[selected_track_id] = 0
-    #             self.broadcaster_vote_count[selected_track_id] += 1
-
-    #     # 투표 결과를 통해 방송인 얼굴 확정
-    #     if self.face_frame_count % 30 == 0:
-    #         max_votes = 0
-    #         for track_id, votes in self.broadcaster_vote_count.items():
-    #             if votes > max_votes:
-    #                 max_votes = votes
-    #                 self.broadcaster_id = track_id
-
-    #         if max_votes >= self.vote_threshold:
-    #             # 방송인 얼굴의 위치를 업데이트
-    #             self.broadcaster_box = next((track[:4] for track in tracked_objects if len(track) >= 5 and int(track[-1]) == self.broadcaster_id), None)
-    #             logging.debug(f"Updated broadcaster_box: {self.broadcaster_box}")
-    #         else:
-    #             self.broadcaster_box = None
-
-    #         # 투표 기록 초기화
-    #         self.broadcaster_vote_count.clear()
-
-    #     # 방송인 얼굴 외 나머지 얼굴에 모자이크 적용
-    #     for track in tracked_objects:
-    #         if len(track) >= 5:
-    #             x1, y1, x2, y2, track_id = map(int, track[:5])
-
-    #             # 방송인 얼굴 외에 모자이크 적용
-    #             if track_id != self.broadcaster_id:
-    #                 img = self.apply_mosaic(img, (x1, y1), (x2, y2))
-
-    #     if detect_face:
-    #         self.face_frame_count += 1
-
-    #     return img
