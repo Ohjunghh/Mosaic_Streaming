@@ -320,7 +320,7 @@ class LiveStreamScreen extends StatefulWidget {
 
 class _LiveStreamScreenState extends State<LiveStreamScreen> {
   List<String> _liveStreams = [];
-  String serverIp = '172.20.69.137';  // 서버 IP 설정
+  String serverIp = '172.20.66.178';  // 서버 IP 설정
   bool _isLoading = false;
   List<String> _categories = ['All', 'Music', 'Games', 'Sports', 'Daily'];
   String _selectedCategory = 'All';

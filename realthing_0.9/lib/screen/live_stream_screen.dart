@@ -558,6 +558,12 @@ class _LiveViewPageState extends State<LiveViewPage> with WidgetsBindingObserver
       return;
     }
 
+    // 스트림 키가 비어있는지 확인
+    if (config.streamKey.isEmpty) {
+      _showDialog(context, "Error", "Stream key is not set. Please configure the stream key in settings.");
+      return;
+    }
+
     // Django 서버에 방송 시작 알리기
     await _notifyDjangoBroadcastStarted();
 
