@@ -338,6 +338,224 @@ class WebcamStream:
 
     #     return img
 
+#고치다 만거.. 모자이크 자꾸끊겨
+    # def detect(self, img, license_plate, invoice, id_card, license_card, knife, face):
+    #     # Check for valid image
+    #     if img is None or img.shape[0] == 0 or img.shape[1] == 0:
+    #         return None
+
+    #     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    #     results = self.model(img_rgb)
+    #     track_results = []
+    #     face_detect = False
+
+    #     # Detect objects and faces
+    #     for det in results.xyxy[0]:
+    #         x1, y1, x2, y2, conf, cls = det
+    #         cls = int(cls)
+    #         if conf < confidence_t:
+    #             continue
+
+    #         if cls == 0 and license_plate:
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+            
+    #         if cls == 1 and invoice:
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+            
+    #         if cls == 2 and id_card:
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+            
+    #         if cls == 3 and license_card:
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+            
+    #         if cls == 4 and knife:
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+            
+    #         if cls == 5 and face:
+    #             track_results.append([x1.item(), y1.item(), x2.item(), y2.item()])
+    #             face_detect = True
+
+    #     # Apply SORT algorithm for tracking faces
+    #     if len(track_results) > 0:
+    #         self.no_detection_frames = 0 
+    #         self.tracked_objects = self.tracker.update(np.array(track_results))
+    #     else:
+    #         # self.no_detection_frames +=1 
+    #         # if self.no_detection_frames <29:
+    #         #     #pass
+    #         #     if len(self.tracked_objects) > 0:
+    #         #         # tracked_objects의 각 ID와 tracker의 인덱스를 매핑하여 예측된 위치 업데이트
+    #         #         for i, obj in enumerate(self.tracked_objects):
+    #         #             if i < len(self.tracker.trackers):  # 인덱스 범위 확인
+    #         #                 predicted_position = self.tracker.trackers[i].predict()  # i에 해당하는 tracker의 예측된 위치
+    #         #                 obj[:4] = predicted_position[:4]  # 예측된 위치로 업데이트
+    #         # else:
+    #         self.tracked_objects = self.tracker.update(np.empty((0, 4)))  # tracked_objects가 없을 경우 초기화
+            
+
+    #     # YOLO Detection이 없을 때 SOME_THRESHOLD 고려
+    #     if len(track_results) == 0 and self.face_frame_count >= self.SOME_THRESHOLD:
+    #         #logging.debug("YOLO Detection이 없고, face_frame_count가 SOME_THRESHOLD 이상입니다. 모자이크를 적용합니다.")
+    #         if self.previous_broadcaster_id is None:
+    #             logging.debug("이전 방송인 ID가 설정되지 않았습니다. 추적 중인 영역에 모자이크를 적용합니다.")
+    #             for obj in self.tracked_objects:
+    #                 x1, y1, x2, y2, track_id = obj[:5]
+    #                 img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))  # 추적 중인 객체에 모자이크 적용
+    #         else:
+    #             logging.debug(f"현재 방송인 ID: {self.previous_broadcaster_id}. 모자이크 적용 여부 확인.")
+    #             for obj in self.tracked_objects:
+    #                 x1, y1, x2, y2, track_id = obj[:5]
+    #                 logging.debug(f"현재 트랙 ID: {track_id}, 이전 방송인 ID: {self.previous_broadcaster_id}")
+    #                 if track_id != self.previous_broadcaster_id:
+    #                     img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))  # 방송인이 아닌 경우 모자이크 적용
+    #                     logging.debug(f" {track_id}가 방송인이 아니므로 모자이크합니다.")
+    #                 else:
+    #                     logging.debug(f" {track_id}가 방송인이므로 모자이크에서 제외합니다.")
+
+    #     # 얼굴 인식 로직
+    #     # Process each tracked face
+    #     for obj in self.tracked_objects:
+    #         x1, y1, x2, y2, track_id = obj[:5]
+    #         object_img = img[int(y1):int(y2), int(x1):int(x2)]
+
+    #          # 잘못된 얼굴 영역 처리
+    #         if object_img.size == 0 or x1 < 0 or y1 < 0 or x2 > img.shape[1] or y2 > img.shape[0]:
+    #             logging.debug(f"잘못된 얼굴 영역: x1={x1}, y1={y1}, x2={x2}, y2={y2}")
+    #             if track_id != self.previous_broadcaster_id:  # 이전 방송인이 아닐 경우 모자이크 적용
+    #                 img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #                 logging.debug(f"잘못된 얼굴 영역이지만 이전방송인이 아니므로 모자이크를 적용합니다.")
+    #             continue  # 잘못된 얼굴 영역일 경우 건너뜀
+
+
+    #         # 얼굴 프레임 수 체크 및 인식 로직 
+    #         if self.face_frame_count % 30 == 0  or self.face_recognition_needed: 
+    #             self.face_recognition_needed = False 
+    #             logging.debug(f"Performing face recognition on frame {self.face_frame_count}.")
+
+    #             encode_face = self.get_encode(object_img, required_size)
+    #             if encode_face is None:
+    #                     logging.debug(f"Track ID {track_id}의 얼굴 인식이 실패했습니다.")
+    #                     if track_id != self.previous_broadcaster_id:  # 이전 방송인이 아닌 경우에만 모자이크 적용
+    #                         logging.debug(f"Track ID {track_id}는 이전 방송인이 아니므로 모자이크를 적용합니다.")
+    #                         img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #                     continue
+
+
+    #             encode_face = l2_normalizer.transform(encode_face.reshape(1, -1))[0]
+    #             name = 'unknown'
+    #             distance = float('inf')
+
+    #             # Compare the face encoding with the stored encoding dictionary
+    #             for db_name, db_encode in self.encoding_dict.items():
+    #                 dist = cosine(db_encode, encode_face)
+    #                 if dist < recognition_t and dist < distance:
+    #                     name = db_name
+    #                     distance = dist
+               
+    #             # Store recognized faces with track ID
+    #             self.recognized_faces[track_id] = {'name': name, 'distance': distance}
+    #             logging.debug(f"Track ID {track_id}, Name: {name}, Distance: {distance}")
+    #               # Update the best broadcaster based on recognition
+    #             if name != 'unknown' and (self.best_broadcaster_id is None or distance < self.recognized_faces[self.best_broadcaster_id]['distance']):
+    #                 self.best_broadcaster_id = track_id
+    #                 self.previous_broadcaster_id = self.best_broadcaster_id  # Remember the broadcaster
+    #                 self.face_recognition_needed = False
+    #                 logging.debug(f"Best broadcaster updated: Track ID {track_id}, Name: {name}, Distance: {distance}")
+    #             else:
+    #                     # If no new broadcaster, maintain the previous one
+    #                 if self.previous_broadcaster_id is not None and self.previous_broadcaster_id in self.recognized_faces:
+    #                     self.best_broadcaster_id = self.previous_broadcaster_id
+    #                     self.face_recognition_needed = False
+    #                     logging.debug(f"Best broadcaster maintained: Track ID {self.previous_broadcaster_id}")        
+
+    #         else:
+    #             # Continue using the previous broadcaster if no new face is recognized
+    #             if self.previous_broadcaster_id is not None and self.previous_broadcaster_id in self.recognized_faces:
+    #                 self.best_broadcaster_id = self.previous_broadcaster_id
+    #                 #logging.debug(f"Continuing to use previous broadcaster ID: {self.previous_broadcaster_id}")
+
+
+    #     # Step 3: 최고의 방송인 상태에 따른 모자이크 적용 로직
+    #     # Highlight the broadcaster face if detected
+    #     for obj in self.tracked_objects:
+    #         #print(f'현재 best_broadcaster_id:{self.best_broadcaster_id}')
+    #         x1, y1, x2, y2, track_id = obj[:5]
+
+    #         # 얼굴이 화면의 반만 나가는 경우 처리
+    #         if (x1 < 0 or x2 > img.shape[1] or y1 < 0 or y2 > img.shape[0]):
+    #             if track_id == self.previous_broadcaster_id:
+    #                 #cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+    #                 logging.debug(f"Track ID {track_id}는 이전 방송인으로 인식되어 모자이크를 적용하지 않습니다.")
+    #             else:
+    #                 logging.debug(f"Track ID {track_id}는 화면의 경계를 넘어 모자이크를 적용합니다.")
+    #                 img =self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+
+    #         # 인식된 방송인이 없으면 모자이크 적용
+    #         elif self.best_broadcaster_id is None:
+    #             logging.debug(f"인식된 방송인이 없으므로 Track ID {track_id}에 모자이크를 적용합니다.")
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         elif track_id != self.best_broadcaster_id:
+    #             logging.debug(f"최고의 방송인이 아니므로 Track ID {track_id}에 모자이크를 적용합니다.")
+    #             img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+
+
+    #     # 현재 tracked_objects 상태 확인
+    #     if len(self.tracked_objects) > 0:  # tracked_objects가 비어있지 않은 경우에만 체크
+    #         # if self.best_broadcaster_id is not None:
+    #         #     # 최고의 방송인이 화면에서 사라졌는지 확인
+    #         #     if all(obj[4] != self.best_broadcaster_id for obj in self.tracked_objects):
+    #         #         logging.debug(f"최고의 방송인 ID {self.best_broadcaster_id}가 화면에서 사라졌습니다.")
+    #         #         # 이전 방송인이 있는 경우 ID 초기화 방지
+    #         #         if self.previous_broadcaster_id is None : #or self.previous_broadcaster_id == self.best_broadcaster_id:
+    #         #             logging.debug("이전 방송인과 나간 방송인 ID가 같으므로 ID를 초기화합니다.")
+    #         #             self.best_broadcaster_id = None  # ID 초기화
+    #         #             self.face_recognition_needed = True  # 새로운 방송인을 인식해야 함
+    #         #         else:
+    #         #             logging.debug("이전 방송인이 존재하므로 ID를 초기화하지 않습니다.")
+                            
+    #         #         # self.best_broadcaster_id = None  # ID 초기화
+    #         #         # self.face_recognition_needed = True  # 새로운 방송인을 인식해야 함
+                  
+    #         # else:
+    #         #     logging.debug("현재 best_broadcaster_id는 None입니다. ID 초기화 하지 않음.")
+
+    #          # 모자이크를 적용할 조건 체크
+    #         if self.best_broadcaster_id is None:
+    #             logging.debug("인식된 방송인이 없으므로 모든 tracked_objects에 모자이크를 적용합니다.")
+    #             for obj in self.tracked_objects:
+    #                 x1, y1, x2, y2, track_id = obj[:5]
+    #                 img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #         else:
+    #             # 최고의 방송인이 화면에서 사라졌는지 확인
+    #             if all(obj[4] != self.best_broadcaster_id for obj in self.tracked_objects):
+    #                 logging.debug(f"최고의 방송인 ID {self.best_broadcaster_id}가 화면에서 사라졌습니다.")
+    #                 # 이전 방송인이 있는 경우 ID 초기화 방지
+    #                 if self.previous_broadcaster_id is None:
+    #                     logging.debug("이전 방송인과 나간 방송인 ID가 같으므로 ID를 초기화합니다.")
+    #                     self.best_broadcaster_id = None  # ID 초기화
+    #                     # self.face_recognition_needed = True  # 새로운 방송인을 인식해야 함
+    #                     self.face_recognition_needed = False  # 새로운 방송인을 인식해야 함
+    #                 else:
+    #                     logging.debug("이전 방송인이 존재하므로 ID를 초기화하지 않습니다.")
+    #             else:
+    #                 # 최고의 방송인이 아닌 경우 모자이크 적용
+    #                 for obj in self.tracked_objects:
+    #                     x1, y1, x2, y2, track_id = obj[:5]
+    #                     if track_id != self.best_broadcaster_id:
+    #                         logging.debug(f"최고의 방송인이 아닌 Track ID {track_id}에 모자이크를 적용합니다.")
+    #                         img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+    #     else:
+    #         self.face_recognition_needed = True  # 새로운 방송인을 인식해야 함
+            
+    #         #pass
+    #         #logging.debug("현재 tracked_objects가 비어있습니다. ID 초기화 조건을 체크하지 않습니다.")
+           
+        
+    #     if face_detect:
+    #         self.face_frame_count += 1
+
+    #     return img
+
     def detect(self, img, license_plate, invoice, id_card, license_card, knife, face):
         # Check for valid image
         if img is None or img.shape[0] == 0 or img.shape[1] == 0:
@@ -373,44 +591,23 @@ class WebcamStream:
             if cls == 5 and face:
                 track_results.append([x1.item(), y1.item(), x2.item(), y2.item()])
                 face_detect = True
-
+                
+        print(f"디텍션된 얼굴 개수: {len(track_results)}")
         # Apply SORT algorithm for tracking faces
         if len(track_results) > 0:
-            self.no_detection_frames = 0 
-            self.tracked_objects = self.tracker.update(np.array(track_results))
+            tracked_objects = self.tracker.update(np.array(track_results))
         else:
-            self.no_detection_frames +=1 
-            if self.no_detection_frames <29:
-                pass
-            else:
-                self.tracked_objects = self.tracker.update(np.empty((0, 4)))  # tracked_objects가 없을 경우 초기화
-            
+            tracked_objects = self.tracker.update(np.empty((0, 4)))
 
-        # YOLO Detection이 없을 때 SOME_THRESHOLD 고려
-        if len(track_results) == 0 and self.face_frame_count >= self.SOME_THRESHOLD:
-            #logging.debug("YOLO Detection이 없고, face_frame_count가 SOME_THRESHOLD 이상입니다. 모자이크를 적용합니다.")
-            if self.previous_broadcaster_id is None:
-                logging.debug("이전 방송인 ID가 설정되지 않았습니다. 추적 중인 영역에 모자이크를 적용합니다.")
-                for obj in self.tracked_objects:
-                    x1, y1, x2, y2, track_id = obj[:5]
-                    img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))  # 추적 중인 객체에 모자이크 적용
-            else:
-                logging.debug(f"현재 방송인 ID: {self.previous_broadcaster_id}. 모자이크 적용 여부 확인.")
-                for obj in self.tracked_objects:
-                    x1, y1, x2, y2, track_id = obj[:5]
-                    logging.debug(f"현재 트랙 ID: {track_id}, 이전 방송인 ID: {self.previous_broadcaster_id}")
-                    if track_id != self.previous_broadcaster_id:
-                        img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))  # 방송인이 아닌 경우 모자이크 적용
-                        logging.debug(f" {track_id}가 방송인이 아니므로 모자이크합니다.")
-                    else:
-                        logging.debug(f" {track_id}가 방송인이므로 모자이크에서 제외합니다.")
+        # Variables to track best broadcaster
+        min_distance = float('inf')
+        best_broadcaster_id = None
 
-        # 얼굴 인식 로직
         # Process each tracked face
-        for obj in self.tracked_objects:
+        for obj in tracked_objects:
             x1, y1, x2, y2, track_id = obj[:5]
             object_img = img[int(y1):int(y2), int(x1):int(x2)]
-
+            
              # 잘못된 얼굴 영역 처리
             if object_img.size == 0 or x1 < 0 or y1 < 0 or x2 > img.shape[1] or y2 > img.shape[0]:
                 logging.debug(f"잘못된 얼굴 영역: x1={x1}, y1={y1}, x2={x2}, y2={y2}")
@@ -420,18 +617,18 @@ class WebcamStream:
                 continue  # 잘못된 얼굴 영역일 경우 건너뜀
 
 
-            # 얼굴 프레임 수 체크 및 인식 로직 
-            if self.face_frame_count % 30 == 0  or self.face_recognition_needed: 
+            # Perform face recognition every 30 frames
+            if self.face_frame_count % 30 == 0:
                 logging.debug(f"Performing face recognition on frame {self.face_frame_count}.")
 
                 encode_face = self.get_encode(object_img, required_size)
+               
                 if encode_face is None:
-                        logging.debug(f"Track ID {track_id}의 얼굴 인식이 실패했습니다.")
-                        if track_id != self.previous_broadcaster_id:  # 이전 방송인이 아닌 경우에만 모자이크 적용
-                            logging.debug(f"Track ID {track_id}는 이전 방송인이 아니므로 모자이크를 적용합니다.")
-                            img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
-                        continue
-
+                    logging.debug(f"Track ID {track_id}의 얼굴 인식이 실패했습니다.")
+                    if track_id != self.previous_broadcaster_id:  # 이전 방송인이 아닌 경우에만 모자이크 적용
+                        logging.debug(f"Track ID {track_id}는 이전 방송인이 아니므로 모자이크를 적용합니다.")
+                        img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+                    continue
 
                 encode_face = l2_normalizer.transform(encode_face.reshape(1, -1))[0]
                 name = 'unknown'
@@ -443,83 +640,59 @@ class WebcamStream:
                     if dist < recognition_t and dist < distance:
                         name = db_name
                         distance = dist
-               
+
                 # Store recognized faces with track ID
                 self.recognized_faces[track_id] = {'name': name, 'distance': distance}
                 logging.debug(f"Track ID {track_id}, Name: {name}, Distance: {distance}")
-                  # Update the best broadcaster based on recognition
-                if name != 'unknown' and (self.best_broadcaster_id is None or distance < self.recognized_faces[self.best_broadcaster_id]['distance']):
-                    self.best_broadcaster_id = track_id
-                    self.previous_broadcaster_id = self.best_broadcaster_id  # Remember the broadcaster
-                    self.face_recognition_needed = False
-                    logging.debug(f"Best broadcaster updated: Track ID {track_id}, Name: {name}, Distance: {distance}")
+
+                # Update the best broadcaster based on recognition
+                if name != 'unknown' and (best_broadcaster_id is None or distance < self.recognized_faces[best_broadcaster_id]['distance']):
+                    best_broadcaster_id = track_id
+                    self.previous_broadcaster_id = best_broadcaster_id  # Remember the broadcaster
+                    #logging.debug(f"Best broadcaster updated: Track ID {track_id}, Name: {name}, Distance: {distance}")
                 else:
-                        # If no new broadcaster, maintain the previous one
+                    # If no new broadcaster, maintain the previous one
                     if self.previous_broadcaster_id is not None and self.previous_broadcaster_id in self.recognized_faces:
-                        self.best_broadcaster_id = self.previous_broadcaster_id
-                        self.face_recognition_needed = False
-                        logging.debug(f"Best broadcaster maintained: Track ID {self.previous_broadcaster_id}")        
+                        best_broadcaster_id = self.previous_broadcaster_id
+                        #logging.debug(f"Best broadcaster maintained: Track ID {self.previous_broadcaster_id}")
 
             else:
                 # Continue using the previous broadcaster if no new face is recognized
                 if self.previous_broadcaster_id is not None and self.previous_broadcaster_id in self.recognized_faces:
-                    self.best_broadcaster_id = self.previous_broadcaster_id
+                    best_broadcaster_id = self.previous_broadcaster_id
                     #logging.debug(f"Continuing to use previous broadcaster ID: {self.previous_broadcaster_id}")
 
-
-        # Step 3: 최고의 방송인 상태에 따른 모자이크 적용 로직
         # Highlight the broadcaster face if detected
-        for obj in self.tracked_objects:
-            #print(f'현재 best_broadcaster_id:{self.best_broadcaster_id}')
-            x1, y1, x2, y2, track_id = obj[:5]
+        if best_broadcaster_id is not None:
+            broadcaster_info = self.recognized_faces[best_broadcaster_id]
+            broadcaster_name = broadcaster_info['name']
+            broadcaster_distance = broadcaster_info['distance']
+            #logging.debug(f"Best broadcaster: Track ID {best_broadcaster_id}, Name: {broadcaster_name}, Distance: {broadcaster_distance}")
 
-            # 얼굴이 화면의 반만 나가는 경우 처리
-            if (x1 < 0 or x2 > img.shape[1] or y1 < 0 or y2 > img.shape[0]):
-                if track_id == self.previous_broadcaster_id:
-                    #cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                    logging.debug(f"Track ID {track_id}는 이전 방송인으로 인식되어 모자이크를 적용하지 않습니다.")
+            # Highlight broadcaster with a green box, and apply mosaic to others
+            for obj in tracked_objects:
+                x1, y1, x2, y2, track_id = obj[:5]
+                if track_id == best_broadcaster_id:
+                    # cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    # cv2.putText(img, f'{broadcaster_name} {broadcaster_distance:.2f}', (int(x1), int(y1) - 10),
+                    #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    pass
                 else:
-                    logging.debug(f"Track ID {track_id}는 화면의 경계를 넘어 모자이크를 적용합니다.")
-                    img =self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
-
-            # 인식된 방송인이 없으면 모자이크 적용
-            elif self.best_broadcaster_id is None:
-                logging.debug(f"인식된 방송인이 없으므로 Track ID {track_id}에 모자이크를 적용합니다.")
-                img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
-            elif track_id != self.best_broadcaster_id:
-                logging.debug(f"최고의 방송인이 아니므로 Track ID {track_id}에 모자이크를 적용합니다.")
-                img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
-
-
-        # 현재 tracked_objects 상태 확인
-        if len(self.tracked_objects) > 0:  # tracked_objects가 비어있지 않은 경우에만 체크
-            if self.best_broadcaster_id is not None:
-                # 최고의 방송인이 화면에서 사라졌는지 확인
-                if all(obj[4] != self.best_broadcaster_id for obj in self.tracked_objects):
-                    logging.debug(f"최고의 방송인 ID {self.best_broadcaster_id}가 화면에서 사라졌습니다.")
-                    # 이전 방송인이 있는 경우 ID 초기화 방지
-                    # if self.previous_broadcaster_id is None : #or self.previous_broadcaster_id == self.best_broadcaster_id:
-                    #     logging.debug("이전 방송인과 나간 방송인 ID가 같으므로 ID를 초기화합니다.")
-                    #     self.best_broadcaster_id = None  # ID 초기화
-                    #     self.face_recognition_needed = True  # 새로운 방송인을 인식해야 함
-                    #        else:
-                    #            logging.debug("이전 방송인이 존재하므로 ID를 초기화하지 않습니다.")
-                            
-                    self.best_broadcaster_id = None  # ID 초기화
-                    self.face_recognition_needed = True  # 새로운 방송인을 인식해야 함
-                  
-            else:
-                logging.debug("현재 best_broadcaster_id는 None입니다. ID 초기화 하지 않음.")
+                    img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+                    #cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+                    #cv2.putText(img, 'unknown', (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         else:
-            pass
-            #logging.debug("현재 tracked_objects가 비어있습니다. ID 초기화 조건을 체크하지 않습니다.")
-            #self.face_recognition_needed = True  # 새로운 방송인을 인식해야 함
-        
+            if len(tracked_objects) > 0:
+                for obj in tracked_objects:
+                    x1, y1, x2, y2, track_id = obj[:5]
+                    img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+                    #cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+                    #cv2.putText(img, 'unknown', (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                
         if face_detect:
             self.face_frame_count += 1
 
         return img
-
     # 원래
     # def apply_mosaic(self, image, pt_1, pt_2, kernel_size=15):
     #     x1, y1 = pt_1

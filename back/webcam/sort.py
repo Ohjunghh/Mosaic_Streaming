@@ -267,9 +267,9 @@ def associate_detections_to_trackers(detections, trackers, iou_threshold = 0.3):
         
     return matches, np.array(unmatched_detections), np.array(unmatched_trackers)
     
-
+#max_age를 에서 3로 고침
 class Sort(object):
-    def __init__(self, max_age=1, min_hits=3, iou_threshold=0.3):
+    def __init__(self, max_age=3, min_hits=3, iou_threshold=0.3):
         """
         Parameters for SORT
         """
