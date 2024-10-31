@@ -27,7 +27,7 @@ import torch.utils.cpp_extension
 torch.utils.cpp_extension.CppExtension.load = lambda *args, **kwargs: None
 # Constants and configurations
 confidence_t = 0.5
-recognition_t = 0.19
+recognition_t = 0.32
 required_size = (160, 160)
 CONN_LIMIT = 10
 possible_list = [True] * CONN_LIMIT
@@ -556,6 +556,7 @@ class WebcamStream:
 
     #     return img
 
+    #최종.......?
     def detect(self, img, license_plate, invoice, id_card, license_card, knife, face):
         # Check for valid image
         if img is None or img.shape[0] == 0 or img.shape[1] == 0:
@@ -592,7 +593,7 @@ class WebcamStream:
                 track_results.append([x1.item(), y1.item(), x2.item(), y2.item()])
                 face_detect = True
                 
-        print(f"디텍션된 얼굴 개수: {len(track_results)}")
+        #print(f"디텍션된 얼굴 개수: {len(track_results)}")
         # Apply SORT algorithm for tracking faces
         if len(track_results) > 0:
             tracked_objects = self.tracker.update(np.array(track_results))
@@ -646,25 +647,25 @@ class WebcamStream:
                 logging.debug(f"Track ID {track_id}, Name: {name}, Distance: {distance}")
 
                 # Update the best broadcaster based on recognition
-                if name != 'unknown' and (best_broadcaster_id is None or distance < self.recognized_faces[best_broadcaster_id]['distance']):
-                    best_broadcaster_id = track_id
-                    self.previous_broadcaster_id = best_broadcaster_id  # Remember the broadcaster
+                if name != 'unknown' and (self.best_broadcaster_id is None or distance < self.recognized_faces[self.best_broadcaster_id]['distance']+0.09):
+                    self.best_broadcaster_id = track_id
+                    self.previous_broadcaster_id = self.best_broadcaster_id  # Remember the broadcaster
                     #logging.debug(f"Best broadcaster updated: Track ID {track_id}, Name: {name}, Distance: {distance}")
                 else:
                     # If no new broadcaster, maintain the previous one
                     if self.previous_broadcaster_id is not None and self.previous_broadcaster_id in self.recognized_faces:
-                        best_broadcaster_id = self.previous_broadcaster_id
+                        self.best_broadcaster_id = self.previous_broadcaster_id
                         #logging.debug(f"Best broadcaster maintained: Track ID {self.previous_broadcaster_id}")
 
             else:
                 # Continue using the previous broadcaster if no new face is recognized
                 if self.previous_broadcaster_id is not None and self.previous_broadcaster_id in self.recognized_faces:
-                    best_broadcaster_id = self.previous_broadcaster_id
+                    self.best_broadcaster_id = self.previous_broadcaster_id
                     #logging.debug(f"Continuing to use previous broadcaster ID: {self.previous_broadcaster_id}")
 
         # Highlight the broadcaster face if detected
-        if best_broadcaster_id is not None:
-            broadcaster_info = self.recognized_faces[best_broadcaster_id]
+        if self.best_broadcaster_id is not None:
+            broadcaster_info = self.recognized_faces[self.best_broadcaster_id]
             broadcaster_name = broadcaster_info['name']
             broadcaster_distance = broadcaster_info['distance']
             #logging.debug(f"Best broadcaster: Track ID {best_broadcaster_id}, Name: {broadcaster_name}, Distance: {broadcaster_distance}")
@@ -672,13 +673,14 @@ class WebcamStream:
             # Highlight broadcaster with a green box, and apply mosaic to others
             for obj in tracked_objects:
                 x1, y1, x2, y2, track_id = obj[:5]
-                if track_id == best_broadcaster_id:
+                if track_id == self.best_broadcaster_id:
                     # cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                     # cv2.putText(img, f'{broadcaster_name} {broadcaster_distance:.2f}', (int(x1), int(y1) - 10),
                     #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     pass
                 else:
                     img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+                    logging.debug(f"베스트 방송인아니어서 모자이크 베스트 방송인 : {self.best_broadcaster_id}")
                     #cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
                     #cv2.putText(img, 'unknown', (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         else:
@@ -686,6 +688,7 @@ class WebcamStream:
                 for obj in tracked_objects:
                     x1, y1, x2, y2, track_id = obj[:5]
                     img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
+                    logging.debug(f"베스트 방송인 없어서 모자이크")
                     #cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
                     #cv2.putText(img, 'unknown', (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
                 
@@ -693,6 +696,7 @@ class WebcamStream:
             self.face_frame_count += 1
 
         return img
+        
     # 원래
     # def apply_mosaic(self, image, pt_1, pt_2, kernel_size=15):
     #     x1, y1 = pt_1
