@@ -12,7 +12,7 @@ def load_global_model():
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             #device = torch.device('cpu')
             logger.info(f'Using device: {device}')
-            yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', path='./face_recognition_2/926.pt', force_reload=False)
+            yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', path='./face_recognition_2/best.pt', force_reload=False)
             logger.info('YOLO model downloaded and loaded into memory')
             
             yolo_model.to(device)

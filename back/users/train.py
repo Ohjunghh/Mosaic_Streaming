@@ -75,6 +75,3 @@ def encode_faces(user_id):
         encoding_dict[str(user_id)] = encode
 
     return encoding_dict  # 인코딩 딕셔너리 반환
-
-# 예시로 장고에서 사용하는 방법
-# encoding_dict = encode_faces(request.user.id)

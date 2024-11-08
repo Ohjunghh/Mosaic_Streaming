@@ -11,12 +11,10 @@ from rest_framework.permissions import AllowAny
 from .serializers import UserRegistrationSerializer
 from .models import CustomUser  # 수정한 사용자 모델
 from .models import UserImage
-#from .aboutvideo import load_face_encoder, load_encoding_dict, detect_and_mosaic#, load_yolo_model
 from .aboutvideo import VideoProcessor
 from yolo_loader import yolo_model  # 전역 YOLO 모델 사용
 from django.conf import settings
 from django.http import FileResponse
-#from django.utils.text import slugify
 from .models import ProcessedVideo, ProfileImage  # 모델 임포트
 import os
 import json
@@ -25,17 +23,6 @@ import jwt
 import torch
 from django.conf import settings
 
-
-# YOLO 모델을 글로벌 변수로 선언
-# YOLO_MODEL = None
-
-# def get_yolo_model():
-#     global YOLO_MODEL
-#     if YOLO_MODEL is None:
-#         # 모델을 처음 한 번만 로드하고 글로벌 변수에 저장
-#         YOLO_MODEL = load_yolo_model()
-#         print("YOLO 모델이 성공적으로 로드되었습니다.")
-#     return YOLO_MODEL
 
 @csrf_exempt
 @api_view(['POST'])
@@ -206,12 +193,6 @@ def video_upload(request):
         if not ret:
             break
         
-        # 627.pt
-        # if avatar:
-        #     frame = detect_and_stylize(frame, model, face_encoder, encoding_dict, device, style_degree, invoice, id_card, knife, face)
-        # else:
-        #     frame = detect_and_mosaic(frame, model, face_encoder, encoding_dict, invoice, id_card, knife, face)
-
         if avatar:
             from VToonify.style_transfer import detect_and_stylize
             frame = detect_and_stylize(frame, model, face_encoder, encoding_dict, device, style_degree, license_plate, invoice, id_card, license_card, knife, face)

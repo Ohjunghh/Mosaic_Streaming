@@ -384,6 +384,7 @@ import 'package:path_provider/path_provider.dart'; // path_provider 사용 추�
 import 'upload_video_screen.dart'; // 업로드 화면 import
 import '../model/video_model.dart'; // Video 모델 import
 import 'video_player_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/ip.dart';
 
 class MyVideosScreen extends StatefulWidget {
@@ -403,9 +404,16 @@ class _MyVideosScreenState extends State<MyVideosScreen> {
     _loadProcessedVideos(); // 처리된 비디오 불러오기
   }
 
+  // SharedPreferences에서 이메일을 가져오는 함수
+  Future<String?> _getUserEmail() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_email');
+  }
+
   // 처리된 비디오 불러오기
   Future<void> _loadProcessedVideos() async {
-    String userEmail = 'aaa@naver.com';
+    //String userEmail = 'aaa@naver.com';
+    String? userEmail = await _getUserEmail(); //'aaa@naver.com';
     try {
       final response = await http.get(
           Uri.parse('${ApiConstants.baseUrl}/api/users/video_download/?email=$userEmail'));

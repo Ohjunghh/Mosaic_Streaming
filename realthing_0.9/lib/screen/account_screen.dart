@@ -1,3 +1,4 @@
+// 계정 스크린
 // import 'dart:io'; // 파일 처리를 위한 import
 // import 'register_face_screen.dart';
 // import 'my_video_screen.dart';
@@ -6,6 +7,7 @@
 // import 'package:http/http.dart' as http;
 // import 'package:shared_preferences/shared_preferences.dart'; // SharedPreferences import
 // import 'package:http_parser/http_parser.dart'; // MediaType import
+// import '../constants/ip.dart';
 //
 // class AccountScreen extends StatefulWidget {
 //   @override
@@ -42,23 +44,25 @@
 //
 //     var request = http.MultipartRequest(
 //       'POST',
-//       Uri.parse('http://172.30.1.26:8000/api/users/profile/'),
+//       Uri.parse('${ApiConstants.baseUrl}/api/users/profile/'),
 //     );
 //     request.headers['Authorization'] = 'Bearer $token';
 //     request.files.add(await http.MultipartFile.fromPath(
 //       'profile_image',
 //       _profileImage!.path,
-//       contentType: MediaType('image', 'jpeg'), // 이미지 형식 설정
+//       contentType: MediaType('image', 'jpeg'),
 //     ));
 //
 //     var response = await request.send();
 //
 //     if (response.statusCode == 200) {
 //       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Profile image uploaded successfully.')));
+//       Navigator.pop(context, true);  // 홈 화면에 성공 여부 전달 (true)
 //     } else {
 //       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to upload profile image.')));
 //     }
 //   }
+//
 //
 //   @override
 //   Widget build(BuildContext context) {
@@ -216,6 +220,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; // SharedPreferences import
 import 'package:http_parser/http_parser.dart'; // MediaType import
 import '../constants/ip.dart';
+import 'home_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   @override
@@ -367,11 +372,14 @@ class _AccountScreenState extends State<AccountScreen> {
             onTap: () async {
               // 로그아웃 처리
               SharedPreferences prefs = await SharedPreferences.getInstance();
-              await prefs.remove('token');  // 토큰 제거
-              await prefs.remove('user_email');  // 이메일 제거
+              await prefs.remove('token'); // 토큰 제거
+              await prefs.remove('user_email'); // 이메일 제거
 
               // 로그아웃 후 로그인 화면으로 이동
-              Navigator.pushReplacementNamed(context, '/login');  // 로그인 화면으로 이동
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+              ); // 로그인 화면으로 이동
             },
           ),
         ],
@@ -417,4 +425,3 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
-

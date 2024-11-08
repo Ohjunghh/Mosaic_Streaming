@@ -1,4 +1,4 @@
 class ApiConstants {
-  static const String baseUrl = 'http://172.20.66.178:8000';
+  static const String baseUrl = 'http://192.168.0.110:8000';
   //ip 설정 주소~!
 }
