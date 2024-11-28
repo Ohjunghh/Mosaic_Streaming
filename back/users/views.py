@@ -41,10 +41,6 @@ def signup(request):
 def signin(request): 
     if request.method == 'POST':
         # 요청에서 로그인 정보 추출
-        # 폼 형식으로 올때
-        # username = request.POST.get('username')
-        # password = request.POST.get('password')
-        
         #Json으로 올 때
         data = json.loads(request.body)
         print("Received data from frontend:",data)
@@ -159,8 +155,6 @@ def video_upload(request):
 
     # YOLO 및 FaceNet 모델 로드
     model = yolo_model
-    # face_encoder = load_face_encoder()
-    # encoding_dict = load_encoding_dict(user.id)
     face_encoder=processor.face_encoder
     encoding_dict=processor.encoding_dict
 
