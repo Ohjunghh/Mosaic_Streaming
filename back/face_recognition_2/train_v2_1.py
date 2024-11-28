@@ -16,7 +16,7 @@ if os.path.exists('/workspace'):
     base_path = '/workspace/face_recognition_2/'
 else:
     # 로컬 환경
-    base_path = 'C:/GRADU/back/face_recognition_2/'
+    base_path = './face_recognition_2/'
 
 face_data = os.path.join(base_path, 'Faces/')
 required_shape = (160, 160)
