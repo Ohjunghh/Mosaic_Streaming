@@ -25,6 +25,7 @@ import logging
 from webcam.sort import Sort 
 import torch.utils.cpp_extension
 torch.utils.cpp_extension.CppExtension.load = lambda *args, **kwargs: None
+
 # Constants and configurations
 confidence_t = 0.5
 recognition_t = 0.32
@@ -50,31 +51,29 @@ class WebcamStream:
         self.stream_id = stream_id
         self.cap = None
         self.process = None
-        self.model = yolo_model  # 글로벌 모델 사용
+        self.model = yolo_model 
         self.tracker = Sort()
         self.output_filename = f"output_{self.stream_id}.mp4"
 
        
-        self.track_id_distances = {}  # 각 track_id에 대한 거리값을 저장
-        self.previous_broadcaster_id = None  # 이전 방송인의 track_id
-        self.broadcaster_frame_count = 0  # 방송인 결과를 유지할 프레임 카운트
+        self.track_id_distances = {}  
+        self.previous_broadcaster_id = None  
+        self.broadcaster_frame_count = 0 
 
-        self.broadcaster_persistence_count = 0  # 방송인 결과를 유지할 프레임 수를 카운팅
-        self.last_broadcaster_id = None  # 마지막으로 인식된 방송인 ID 저장
-        self.last_broadcaster_distance = None  # 마지막으로 인식된 방송인 거리 저장
+        self.broadcaster_persistence_count = 0  
+        self.last_broadcaster_id = None 
+        self.last_broadcaster_distance = None 
         
-
-        # 10/30 새로운 함수 변수 추가
-        self.broadcaster_id = None  # 방송자 ID를 저장하는 변수
-        self.broadcaster_persistence_frames = 30  # 방송자로 인식된 후 유지할 프레임 수
-        self.broadcaster_track_id = None  # 현재 방송자의 트랙 ID
-        self.broadcaster_frame_count = 0  # 방송자로 인식된 후 유지할 프레임 카운트
+        self.broadcaster_id = None  
+        self.broadcaster_persistence_frames = 30 
+        self.broadcaster_track_id = None 
+        self.broadcaster_frame_count = 0 
         self.face_frame_count = 0  
         self.recognized_faces={}
-        self.best_broadcaster_id = None  # best_broadcaster_id를 전역으로 초기화
-        self.SOME_THRESHOLD = 50#30
-        self.face_recognition_needed = False  # 얼굴 인식이 필요한지 여부를 결정하는 플래그
-        self.tracked_objects = []  # tracked_objects 초기화
+        self.best_broadcaster_id = None  
+        self.SOME_THRESHOLD = 30
+        self.face_recognition_needed = False 
+        self.tracked_objects = []  
         self.no_detection_frames = 0 
 
     def load_face_encoder(self):
@@ -86,7 +85,6 @@ class WebcamStream:
         user = CustomUser.objects.get(email=email)
         user_id = user.id  # 사용자 id 가져오기
 
-        # 사용자별로 경로를 동적으로 생성
         pkl_path = os.path.join('C:/GRADU/back/media/encodings', str(user_id), 'encoding_vector.pkl')
 
         # 해당 경로의 pkl 파일을 불러오기
