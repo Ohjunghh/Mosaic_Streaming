@@ -8,6 +8,7 @@ import os
 import asyncio 
 import traceback
 
+from django.conf import settings
 from multiprocessing import Process
 from django.http import StreamingHttpResponse, JsonResponse
 from django.shortcuts import render
@@ -83,31 +84,28 @@ class WebcamStream:
 
     def load_encoding_dict(self, email):
         user = CustomUser.objects.get(email=email)
-        user_id = user.id  # 사용자 id 가져오기
-
-        pkl_path = os.path.join('C:/GRADU/back/media/encodings', str(user_id), 'encoding_vector.pkl')
-
-        # 해당 경로의 pkl 파일을 불러오기
+        user_id = user.id 
+        pkl_path = os.path.join(settings.MEDIA_ROOT, 'encodings', str(user_id), 'encoding_vector.pkl')
+    
         if os.path.exists(pkl_path):
             with open(pkl_path, 'rb') as f:
                 self.encoding_dict = pickle.load(f)
             logger.info(f"Loaded encoding dictionary for user {email} from {pkl_path}")
         else:
             logger.error(f"Encoding file not found for user {email} at {pkl_path}")
-            self.encoding_dict = {}  # 파일이 없을 경우 빈 딕셔너리로 초기화
+            self.encoding_dict = {}  
 
     def start(self, email, stream_key, license_plate, invoice, id_card, license_card, knife, face):
-        stream_opened = False  # 스트림이 정상적으로 열렸는지 여부를 추적하는 플래그
+        stream_opened = False  
 
         try:
-            #self.load_model()
             self.load_face_encoder()
             self.load_encoding_dict(email)
             self.cap = cv2.VideoCapture(f"rtmp://192.168.0.110/live/{stream_key}")
             
             if not self.cap.isOpened():
                 logger.error("Unable to open RTMP stream.")
-                self.stop()  # 스트림을 종료
+                self.stop() 
                 return
             
             fps = int(self.cap.get(cv2.CAP_PROP_FPS))
@@ -119,7 +117,7 @@ class WebcamStream:
                 '-y',
                 '-f', 'rawvideo',
                 '-vcodec', 'rawvideo',
-                '-s', f"{width}x{height}",  # 해상도 추가 (예: 640x480)
+                '-s', f"{width}x{height}", 
                 '-pix_fmt', 'bgr24',
                 '-r', str(fps),
                 '-i', '-',
@@ -127,17 +125,12 @@ class WebcamStream:
                 '-pix_fmt', 'yuv420p',
                 '-preset', 'ultrafast',
                 '-f', 'flv',
-                f'rtmp://192.168.0.110/live-out/{self.stream_id}'  # 스트리밍 대상 RTMP URL
+                f'rtmp://192.168.0.110/live-out/{self.stream_id}' 
             ]
-
-            # 비디오 파일 저장을 위한 VideoWriter 객체 생성
             self.video_writer = cv2.VideoWriter(self.output_filename, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
-            
 
-            stream_opened = True  # 스트림이 정상적으로 열렸음을 기록
+            stream_opened = True 
             self.start_ffmpeg()
-
-           
 
             while True:
                 ret, frame = self.cap.read()
@@ -152,7 +145,6 @@ class WebcamStream:
                 if self.video_writer:
                     self.video_writer.write(frame)
 
-                #  더 이상 화면에 표시하지 않기 때문에 cv2.imshow()와 cv2.waitKey() 제거
                 cv2.imshow('Frame', frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
@@ -172,7 +164,7 @@ class WebcamStream:
         finally:
             if stream_opened:
               logger.info("Stopping the stream and releasing resources.")
-            # 리소스 해제와 관련된 로그 추가
+        
             if self.cap:
                 self.cap.release()
                 logger.info("Video capture released.")
@@ -197,7 +189,6 @@ class WebcamStream:
             self.stop()  # FFmpeg 시작 실패 시 스트림을 종료
 
 
-    #최종
     def detect(self, img, license_plate, invoice, id_card, license_card, knife, face):
         # Check for valid image
         if img is None or img.shape[0] == 0 or img.shape[1] == 0:
@@ -257,9 +248,7 @@ class WebcamStream:
                     logging.debug(f"잘못된 얼굴 영역이지만 이전방송인이 아니므로 모자이크를 적용합니다.")
                 continue  # 잘못된 얼굴 영역일 경우 건너뜀
 
-
-            # Perform face recognition every 30 frames
-            if self.face_frame_count % 50 == 0 or  self.face_frame_count == 3:
+            if self.face_frame_count % 30 == 0 or  self.face_frame_count == 3:
                 logging.debug(f"Performing face recognition on frame {self.face_frame_count}.")
 
                 encode_face = self.get_encode(object_img, required_size)
@@ -275,42 +264,29 @@ class WebcamStream:
                 name = 'unknown'
                 distance = float('inf')
 
-                # Compare the face encoding with the stored encoding dictionary
                 for db_name, db_encode in self.encoding_dict.items():
                     dist = cosine(db_encode, encode_face)
                     if dist < recognition_t and dist < distance:
                         name = db_name
                         distance = dist
 
-                # Store recognized faces with track ID
                 self.recognized_faces[track_id] = {'name': name, 'distance': distance}
                 logging.debug(f"Track ID {track_id}, Name: {name}, Distance: {distance}")
 
-                # Update the best broadcaster based on recognition
                 if name != 'unknown' and (self.best_broadcaster_id is None or distance < self.recognized_faces[self.best_broadcaster_id]['distance']+0.09):
                     self.best_broadcaster_id = track_id
                     self.previous_broadcaster_id = self.best_broadcaster_id  # Remember the broadcaster
-                    #logging.debug(f"Best broadcaster updated: Track ID {track_id}, Name: {name}, Distance: {distance}")
                 else:
-                    # If no new broadcaster, maintain the previous one
                     if self.previous_broadcaster_id is not None and self.previous_broadcaster_id in self.recognized_faces:
                         self.best_broadcaster_id = self.previous_broadcaster_id
-                        #logging.debug(f"Best broadcaster maintained: Track ID {self.previous_broadcaster_id}")
-
             else:
-                # Continue using the previous broadcaster if no new face is recognized
                 if self.previous_broadcaster_id is not None and self.previous_broadcaster_id in self.recognized_faces:
                     self.best_broadcaster_id = self.previous_broadcaster_id
-                    #logging.debug(f"Continuing to use previous broadcaster ID: {self.previous_broadcaster_id}")
-
-        # Highlight the broadcaster face if detected
+                  
         if self.best_broadcaster_id is not None:
             broadcaster_info = self.recognized_faces[self.best_broadcaster_id]
             broadcaster_name = broadcaster_info['name']
             broadcaster_distance = broadcaster_info['distance']
-            #logging.debug(f"Best broadcaster: Track ID {best_broadcaster_id}, Name: {broadcaster_name}, Distance: {broadcaster_distance}")
-
-            # Highlight broadcaster with a green box, and apply mosaic to others
             for obj in tracked_objects:
                 x1, y1, x2, y2, track_id = obj[:5]
                 if track_id == self.best_broadcaster_id:
@@ -325,8 +301,7 @@ class WebcamStream:
                     x1, y1, x2, y2, track_id = obj[:5]
                     img = self.apply_mosaic(img, (int(x1), int(y1)), (int(x2), int(y2)))
                     logging.debug(f"베스트 방송인 없어서 모자이크")
-                
-                
+         
         if face_detect:
             self.face_frame_count += 1
 
@@ -439,13 +414,11 @@ def start_flutter_stream(request):
     knife=True
     face=True
     try:
-            
         if available_id in stream_instances:
             return JsonResponse({"error": f"Stream with ID {available_id} is already running"}, status=400)
         
         stream_instance = WebcamStream(available_id)
 
-        
         # 스트림을 실행하기 위해 새로운 스레드 시작, 추가한 옵션들도 전달
         stream_instances[available_id] = stream_instance
         threading.Thread(target=start_stream_process, args=(available_id, email,stream_key, license_plate, invoice, id_card, license_card, knife, face)).start()
@@ -453,8 +426,7 @@ def start_flutter_stream(request):
     except Exception as e:
         logger.error(f"Error starting stream: {e}")
         return JsonResponse({"error": str(e)}, status=500)
-
-
+        
 def start_stream_process(stream_id, email, stream_key, license_plate, invoice, id_card, license_card, knife, face):
     try:
         stream_instance = stream_instances.get(stream_id)
